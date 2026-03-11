@@ -8,11 +8,13 @@ Nesta versão, a aplicação:
 
 - recebe valor inicial
 - recebe aporte mensal
+- permite sobrescrever aportes em meses específicos
 - permite projeção manual com taxa mensal e período em meses
 - permite simulação histórica com Selic ou poupança
 - compara lado a lado taxa manual, Selic histórica e poupança histórica
 - calcula total investido, juros ganhos e montante final
 - exibe a evolução mês a mês
+- exibe gráfico da evolução acumulada do saldo
 - permite exportar a tabela detalhada em CSV
 - salva os últimos dados preenchidos no navegador
 
@@ -51,7 +53,7 @@ Os testes atuais validam a lógica principal de cálculo manual, o motor genéri
 Execute na raiz do projeto:
 
 ```powershell
-node --test --test-isolation=none tests\calculation.test.js tests\validation.test.js
+node --test --test-isolation=none tests\calculation.test.js tests\validation.test.js tests\contribution-plan.test.js tests\number-input.test.js tests\storage.test.js
 ```
 
 O parâmetro `--test-isolation=none` é usado porque, neste ambiente, o isolamento padrão do runner do Node tenta abrir subprocessos e pode falhar.
@@ -64,7 +66,7 @@ Esse workflow roda automaticamente em `push` e `pull_request` para a branch `mai
 
 - checkout do repositório
 - configuração do Node.js
-- execução de `node --test tests/calculation.test.js tests/validation.test.js`
+- execução de `node --test tests/calculation.test.js tests/validation.test.js tests/contribution-plan.test.js tests/number-input.test.js`
 
 No GitHub Actions, o runner padrão consegue executar o comando de teste sem o parâmetro `--test-isolation=none`.
 
@@ -107,6 +109,9 @@ src/
     view.js
 tests/
   calculation.test.js
+  contribution-plan.test.js
+  number-input.test.js
+  storage.test.js
   validation.test.js
 ```
 
@@ -119,6 +124,7 @@ Use quando quiser estimar um cenário futuro com:
 - taxa mensal fixa
 - número de meses
 - aporte mensal constante
+- opção de aportes personalizados no formato `mês:valor`, por exemplo `1:1000`
 
 ### Simulação histórica
 
@@ -136,6 +142,7 @@ Observações:
 - para a poupança histórica, a consulta fica limitada a 10 anos por causa da série diária da TR
 - se a consulta ao Banco Central falhar, a simulação histórica não será concluída
 - na comparação histórica, a taxa manual usa a mesma quantidade de meses do intervalo selecionado
+- no modo histórico, aportes personalizados usam o formato `AAAA-MM:valor`, por exemplo `2026-03:1200`
 
 ## Manutenção do README
 

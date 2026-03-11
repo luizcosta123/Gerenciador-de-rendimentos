@@ -1,4 +1,13 @@
 import { formatCurrency, formatPercent } from "../lib/formatters.js";
+import { renderProjectionChart } from "./chart.js";
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
 
 function buildCsvContent(result) {
   const header = ["Mês", "Base", "Taxa (%)", "Juros", "Aporte", "Saldo final"];
@@ -48,12 +57,18 @@ export function createView() {
   const benchmarkInput = document.querySelector("#historicalBenchmark");
   const manualFields = document.querySelector('[data-fields="manual"]');
   const historicalFields = document.querySelector('[data-fields="historical"]');
+  const customContributionFields = document.querySelector(
+    '[data-fields="custom-contributions"]',
+  );
   const loadingState = document.querySelector("#loadingState");
   const statusMessage = document.querySelector("#statusMessage");
   const projectionTableBody = document.querySelector("#projectionRows");
   const comparisonCards = document.querySelector("#comparisonCards");
   const comparisonSection = document.querySelector("#comparisonSection");
   const exportCsvButton = document.querySelector("#exportCsvButton");
+  const customContributionRows = document.querySelector("#customContributionRows");
+  const addContributionRowButton = document.querySelector("#addContributionRowButton");
+  const customContributionPlanInput = document.querySelector("#customContributionPlan");
   const bestMonthLabel = document.querySelector("#bestMonthLabel");
   const bestMonthValue = document.querySelector("#bestMonthValue");
   const worstMonthLabel = document.querySelector("#worstMonthLabel");
@@ -62,6 +77,9 @@ export function createView() {
   const totalInvestedValue = document.querySelector("#totalInvested");
   const interestEarnedValue = document.querySelector("#interestEarned");
   const finalAmountValue = document.querySelector("#finalAmount");
+  const chartElement = document.querySelector("#projectionChart");
+  const chartCurrentValue = document.querySelector("#chartCurrentValue");
+  const chartRangeLabel = document.querySelector("#chartRangeLabel");
   const fieldErrorElements = new Map(
     Array.from(document.querySelectorAll("[data-error-for]")).map((element) => [
       element.dataset.errorFor,
@@ -70,6 +88,148 @@ export function createView() {
   );
 
   let lastRenderedResult = null;
+
+  function serializeContributionRows() {
+    const rows = Array.from(
+      customContributionRows.querySelectorAll("[data-contribution-row]"),
+    ).map((row) => ({
+      key:
+        row.querySelector('[data-contribution-field="key"]')?.value.trim() ?? "",
+      amount:
+        row.querySelector('[data-contribution-field="amount"]')?.value.trim() ?? "",
+    }));
+
+    customContributionPlanInput.value = rows
+      .filter((row) => row.key || row.amount)
+      .map((row) => `${row.key}:${row.amount}`)
+      .join("\n");
+  }
+
+  function getContributionRows() {
+    return Array.from(customContributionRows.querySelectorAll("[data-contribution-row]"));
+  }
+
+  function renderContributionRows(rows = [], { mode = "manual" } = {}) {
+    const normalizedRows = rows.length > 0 ? rows : [{ key: "", amount: "" }];
+    const keyLabel = mode === "historical" ? "Mês" : "Mês";
+    const keyPlaceholder = mode === "historical" ? "2026-03" : "1";
+    customContributionRows.innerHTML = normalizedRows
+      .map(
+        (row, index) => `
+          <div class="contribution-row" data-contribution-row="${index}">
+            <label class="field contribution-key-field">
+              <span>${keyLabel}</span>
+              <input
+                type="${mode === "historical" ? "month" : "number"}"
+                min="${mode === "historical" ? "" : "1"}"
+                step="${mode === "historical" ? "" : "1"}"
+                placeholder="${keyPlaceholder}"
+                value="${escapeHtml(row.key ?? "")}"
+                data-contribution-field="key"
+              />
+            </label>
+            <label class="field contribution-amount-field">
+              <span>Valor</span>
+              <div class="step-input step-input-inline">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  data-decimal-input
+                  placeholder="0,00"
+                  value="${escapeHtml(row.amount ?? "")}"
+                  data-contribution-field="amount"
+                />
+                <div
+                  class="step-actions step-actions-inline contribution-step-actions"
+                  aria-label="Ajustar valor do aporte"
+                >
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-field="amount"
+                    data-step-delta="-1000"
+                    aria-label="Diminuir valor do aporte em 1000"
+                  >
+                    1k
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-field="amount"
+                    data-step-delta="-100"
+                    aria-label="Diminuir valor do aporte em 100"
+                  >
+                    100
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-field="amount"
+                    data-step-delta="100"
+                    aria-label="Aumentar valor do aporte em 100"
+                  >
+                    100
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-field="amount"
+                    data-step-delta="1000"
+                    aria-label="Aumentar valor do aporte em 1000"
+                  >
+                    1k
+                  </button>
+                </div>
+              </div>
+            </label>
+            <button type="button" class="secondary-action" data-remove-contribution-row>
+              Remover
+            </button>
+          </div>
+        `,
+      )
+      .join("");
+
+    serializeContributionRows();
+  }
+
+  function addContributionRow({ key = "", amount = "" } = {}, mode = "manual") {
+    const rows = getContributionRows().map((row) => ({
+      key: row.querySelector('[data-contribution-field="key"]')?.value ?? "",
+      amount: row.querySelector('[data-contribution-field="amount"]')?.value ?? "",
+    }));
+
+    rows.push({ key, amount });
+    renderContributionRows(rows, { mode });
+  }
+
+  function removeContributionRow(rowIndex, mode = "manual") {
+    const rows = getContributionRows()
+      .map((row) => ({
+        key: row.querySelector('[data-contribution-field="key"]')?.value ?? "",
+        amount: row.querySelector('[data-contribution-field="amount"]')?.value ?? "",
+      }))
+      .filter((_, index) => index !== rowIndex);
+
+    renderContributionRows(rows, { mode });
+  }
+
+  function syncContributionPlanFromUi() {
+    serializeContributionRows();
+  }
+
+  function loadContributionPlanFromSerializedValue(mode = "manual") {
+    const rows = String(customContributionPlanInput.value ?? "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [key, amount] = line.split(":");
+        return { key: key ?? "", amount: amount ?? "" };
+      });
+
+    renderContributionRows(rows, { mode });
+  }
 
   function setStatus(message, tone = "neutral") {
     statusMessage.textContent = message;
@@ -131,6 +291,12 @@ export function createView() {
     worstMonthLabel.textContent = worstMonth?.label ?? "-";
     worstMonthValue.textContent = formatCurrency(worstMonth?.interestEarned ?? 0);
     totalInterestValue.textContent = formatCurrency(result.interestEarned);
+    renderProjectionChart({
+      svgElement: chartElement,
+      currentValueElement: chartCurrentValue,
+      rangeLabelElement: chartRangeLabel,
+      result,
+    });
 
     projectionTableBody.innerHTML = result.schedule
       .map(
@@ -219,12 +385,18 @@ export function createView() {
   }
 
   return {
+    addContributionRow,
+    addContributionRowButton,
     benchmarkInput,
     exportCsvButton,
     form,
     historicalFields,
     manualFields,
     modeInput,
+    loadContributionPlanFromSerializedValue,
+    removeContributionRow,
+    renderContributionRows,
+    customContributionFields,
     clearFieldError,
     clearFieldErrors,
     exportCurrentResultToCsv,
@@ -233,5 +405,6 @@ export function createView() {
     setFieldError,
     setLoading,
     setStatus,
+    syncContributionPlanFromUi,
   };
 }

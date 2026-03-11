@@ -14,9 +14,11 @@ export function calculateProjectionFromRates({
     const openingBalance = balance;
     const monthlyRate = entry.monthlyRatePercent / 100;
     const interestEarned = openingBalance * monthlyRate;
+    const contribution =
+      entry.contribution === undefined ? monthlyContribution : entry.contribution;
 
-    balance = openingBalance + interestEarned + monthlyContribution;
-    totalInvested += monthlyContribution;
+    balance = openingBalance + interestEarned + contribution;
+    totalInvested += contribution;
 
     return {
       index: index + 1,
@@ -25,7 +27,7 @@ export function calculateProjectionFromRates({
       monthlyRatePercent: entry.monthlyRatePercent,
       openingBalance: roundCurrency(openingBalance),
       interestEarned: roundCurrency(interestEarned),
-      contribution: roundCurrency(monthlyContribution),
+      contribution: roundCurrency(contribution),
       totalInvested: roundCurrency(totalInvested),
       closingBalance: roundCurrency(balance),
     };
@@ -47,11 +49,13 @@ export function calculateManualProjection({
   monthlyContribution,
   monthlyRatePercent,
   months,
+  customContributionMap = null,
 }) {
   const monthlyEntries = Array.from({ length: months }, (_, index) => ({
     label: `Mes ${index + 1}`,
     sourceLabel: "Taxa informada",
     monthlyRatePercent,
+    contribution: customContributionMap?.get(index + 1),
   }));
 
   return calculateProjectionFromRates({
@@ -77,10 +81,14 @@ export function calculateHistoricalProjection({
   initialAmount,
   monthlyContribution,
   monthlyEntries,
+  customContributionMap = null,
 }) {
   return calculateProjectionFromRates({
     initialAmount,
     monthlyContribution,
-    monthlyEntries,
+    monthlyEntries: monthlyEntries.map((entry) => ({
+      ...entry,
+      contribution: customContributionMap?.get(entry.label),
+    })),
   });
 }

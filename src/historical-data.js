@@ -101,6 +101,7 @@ export async function buildHistoricalScenario({
   endMonth,
   initialAmount,
   monthlyContribution,
+  customContributionMap = null,
 }) {
   const monthKeys = listMonthKeys(startMonth, endMonth);
 
@@ -133,6 +134,7 @@ export async function buildHistoricalScenario({
       initialAmount,
       monthlyContribution,
       monthlyEntries,
+      customContributionMap,
     });
   }
 
@@ -177,6 +179,7 @@ export async function buildHistoricalScenario({
       initialAmount,
       monthlyContribution,
       monthlyEntries,
+      customContributionMap,
     });
   }
 
@@ -189,6 +192,7 @@ export async function buildComparisonScenarios({
   initialAmount,
   monthlyContribution,
   manualMonthlyRatePercent,
+  customContributionMap = null,
 }) {
   const monthKeys = listMonthKeys(startMonth, endMonth);
 
@@ -250,6 +254,7 @@ export async function buildComparisonScenarios({
         monthlyContribution,
         monthlyRatePercent: manualMonthlyRatePercent,
         months,
+        customContributionMap,
       }),
     },
     selic: {
@@ -258,6 +263,7 @@ export async function buildComparisonScenarios({
         initialAmount,
         monthlyContribution,
         monthlyEntries: selicEntries,
+        customContributionMap,
       }),
     },
     savings: {
@@ -266,6 +272,7 @@ export async function buildComparisonScenarios({
         initialAmount,
         monthlyContribution,
         monthlyEntries: savingsEntries,
+        customContributionMap,
       }),
     },
   };

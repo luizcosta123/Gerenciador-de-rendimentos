@@ -22,4 +22,4 @@ jobs:
           node-version: "24"
 
       - name: Run test suite
-        run: node --test tests/calculation.test.js tests/validation.test.js
+        run: node --test tests/calculation.test.js tests/validation.test.js tests/contribution-plan.test.js tests/number-input.test.js tests/storage.test.js

@@ -8,21 +8,41 @@ import {
   loadStoredFormState,
   saveFormState,
 } from "./lib/storage.js";
+import { parseContributionPlan } from "./lib/contribution-plan.js";
+import {
+  formatDecimalInput,
+  parseDecimalInput,
+  sanitizeDecimalInputValue,
+} from "./lib/number-input.js";
 import {
   readCommonValues,
+  readHistoricalComparisonValues,
+  readManualValues,
   validateFormData,
   validateMonthRange,
 } from "./lib/validation.js";
 import { createView } from "./ui/view.js";
 
 const view = createView();
-const { form, modeInput, manualFields, historicalFields } = view;
+const {
+  addContributionRowButton,
+  form,
+  modeInput,
+  manualFields,
+  historicalFields,
+  customContributionFields,
+} = view;
 
 function syncFieldVisibility() {
   const isHistorical = modeInput.value === "historical";
+  const customContributionToggle = form.elements.namedItem("useCustomContributions");
+  const hasCustomContributions =
+    customContributionToggle instanceof HTMLInputElement && customContributionToggle.checked;
 
   manualFields.hidden = isHistorical;
   historicalFields.hidden = !isHistorical;
+  customContributionFields.hidden = !hasCustomContributions;
+  view.loadContributionPlanFromSerializedValue(modeInput.value);
 
   if (!isHistorical) {
     view.renderComparison(null);
@@ -58,17 +78,23 @@ function applyDefaultFormValues() {
   ) {
     comparisonManualRateInput.value = "1";
   }
+
+  view.renderContributionRows([], { mode: modeInput.value });
 }
 
 async function buildScenarioFromFormData(formData) {
   const mode = String(formData.get("calculationMode"));
   const commonValues = readCommonValues(formData);
+  const customContributionMap =
+    formData.get("useCustomContributions") === "on"
+      ? parseContributionPlan(String(formData.get("customContributionPlan") ?? ""), mode)
+      : null;
 
   if (mode === "manual") {
     return calculateManualProjection({
       ...commonValues,
-      monthlyRatePercent: Number(formData.get("monthlyRate")),
-      months: Number(formData.get("months")),
+      ...readManualValues(formData),
+      customContributionMap,
     });
   }
 
@@ -81,6 +107,7 @@ async function buildScenarioFromFormData(formData) {
     benchmark: String(formData.get("historicalBenchmark")),
     startMonth,
     endMonth,
+    customContributionMap,
     ...commonValues,
   });
 }
@@ -94,6 +121,10 @@ async function buildComparisonFromFormData(formData) {
 
   const startMonth = String(formData.get("startMonth"));
   const endMonth = String(formData.get("endMonth"));
+  const customContributionMap =
+    formData.get("useCustomContributions") === "on"
+      ? parseContributionPlan(String(formData.get("customContributionPlan") ?? ""), mode)
+      : null;
 
   validateMonthRange(startMonth, endMonth);
 
@@ -101,7 +132,8 @@ async function buildComparisonFromFormData(formData) {
     ...readCommonValues(formData),
     startMonth,
     endMonth,
-    manualMonthlyRatePercent: Number(formData.get("comparisonManualRate")),
+    ...readHistoricalComparisonValues(formData),
+    customContributionMap,
   });
 }
 
@@ -172,10 +204,80 @@ async function handleSubmit(event) {
 function handleFieldInteraction(event) {
   const field = event.target;
 
+  if (field instanceof HTMLInputElement && field.hasAttribute("data-decimal-input")) {
+    const sanitizedValue = sanitizeDecimalInputValue(field.value);
+
+    if (field.value !== sanitizedValue) {
+      field.value = sanitizedValue;
+    }
+  }
+
   if (field instanceof HTMLElement && "name" in field && field.name) {
     view.clearFieldError(field.name);
   }
 
+  if (
+    field instanceof HTMLInputElement &&
+    field.name === "useCustomContributions"
+  ) {
+    syncFieldVisibility();
+  }
+
+  if (
+    field instanceof HTMLInputElement &&
+    field.closest("[data-contribution-row]")
+  ) {
+    view.syncContributionPlanFromUi();
+  }
+
+  saveFormState(form);
+}
+
+function handleStepAdjustment(event) {
+  const target = event.target;
+
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const stepButton = target.closest("[data-step-target]");
+
+  if (!(stepButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const fieldName = stepButton.dataset.stepTarget;
+  const contributionField = stepButton.dataset.stepField;
+  const delta = Number(stepButton.dataset.stepDelta);
+
+  if ((!fieldName && !contributionField) || !Number.isFinite(delta)) {
+    return;
+  }
+
+  let field = null;
+
+  if (fieldName) {
+    field = form.elements.namedItem(fieldName);
+  } else if (contributionField) {
+    field = stepButton
+      .closest("[data-contribution-row]")
+      ?.querySelector(`[data-contribution-field="${contributionField}"]`);
+  }
+
+  if (!(field instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const currentValue = parseDecimalInput(field.value);
+  const nextValue = Math.max(Number.isNaN(currentValue) ? 0 : currentValue + delta, 0);
+
+  field.value = formatDecimalInput(nextValue);
+  if (fieldName) {
+    view.clearFieldError(fieldName);
+  }
+  if (contributionField) {
+    view.syncContributionPlanFromUi();
+  }
   saveFormState(form);
 }
 
@@ -189,20 +291,16 @@ async function initializeApp() {
     return;
   }
 
-  const restored = await runCalculation({ restored: true });
-
-  if (!restored) {
-    view.renderResult(
-      calculateManualProjection({
-        initialAmount: 1000,
-        monthlyContribution: 500,
-        monthlyRatePercent: 1,
-        months: 12,
-      }),
-    );
-    view.renderComparison(null);
-    view.setStatus("Preencha os campos e execute uma simulação.");
-  }
+  view.renderResult(
+    calculateManualProjection({
+      initialAmount: 1000,
+      monthlyContribution: 500,
+      monthlyRatePercent: 1,
+      months: 12,
+    }),
+  );
+  view.renderComparison(null);
+  view.setStatus("Revise os dados preenchidos e clique em Calcular para consultar o histórico.");
 }
 
 modeInput.addEventListener("change", () => {
@@ -212,6 +310,35 @@ modeInput.addEventListener("change", () => {
 form.addEventListener("submit", handleSubmit);
 form.addEventListener("input", handleFieldInteraction);
 form.addEventListener("change", handleFieldInteraction);
+addContributionRowButton.addEventListener("click", () => {
+  view.addContributionRow({}, modeInput.value);
+  view.syncContributionPlanFromUi();
+  saveFormState(form);
+});
+form.addEventListener("click", (event) => {
+  const target = event.target;
+
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  handleStepAdjustment(event);
+
+  const removeButton = target.closest("[data-remove-contribution-row]");
+
+  if (!removeButton) {
+    return;
+  }
+
+  const row = removeButton.closest("[data-contribution-row]");
+  const rowIndex = Number(row?.getAttribute("data-contribution-row"));
+
+  if (Number.isInteger(rowIndex)) {
+    view.removeContributionRow(rowIndex, modeInput.value);
+    view.syncContributionPlanFromUi();
+    saveFormState(form);
+  }
+});
 view.exportCsvButton.addEventListener("click", () => {
   view.exportCurrentResultToCsv();
 });

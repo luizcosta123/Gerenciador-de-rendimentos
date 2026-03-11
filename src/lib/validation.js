@@ -1,3 +1,6 @@
+import { parseContributionPlan } from "./contribution-plan.js";
+import { parseDecimalInput } from "./number-input.js";
+
 export function validateMonthRange(startMonth, endMonth) {
   if (!startMonth || !endMonth) {
     throw new Error("Informe o mês inicial e o mês final.");
@@ -9,7 +12,7 @@ export function validateMonthRange(startMonth, endMonth) {
 }
 
 function readNumber(formData, fieldName) {
-  return Number(formData.get(fieldName));
+  return parseDecimalInput(formData.get(fieldName));
 }
 
 export function readCommonValues(formData) {
@@ -19,10 +22,25 @@ export function readCommonValues(formData) {
   };
 }
 
+export function readManualValues(formData) {
+  return {
+    monthlyRatePercent: readNumber(formData, "monthlyRate"),
+    months: readNumber(formData, "months"),
+  };
+}
+
+export function readHistoricalComparisonValues(formData) {
+  return {
+    manualMonthlyRatePercent: readNumber(formData, "comparisonManualRate"),
+  };
+}
+
 export function validateFormData(formData) {
   const mode = String(formData.get("calculationMode"));
   const errors = [];
   const { initialAmount, monthlyContribution } = readCommonValues(formData);
+  const hasCustomContributions = formData.get("useCustomContributions") === "on";
+  const contributionPlan = String(formData.get("customContributionPlan") ?? "").trim();
 
   if (!Number.isFinite(initialAmount) || initialAmount < 0) {
     errors.push(["initialAmount", "Informe um valor inicial maior ou igual a zero."]);
@@ -36,8 +54,7 @@ export function validateFormData(formData) {
   }
 
   if (mode === "manual") {
-    const monthlyRate = readNumber(formData, "monthlyRate");
-    const months = readNumber(formData, "months");
+    const { monthlyRatePercent: monthlyRate, months } = readManualValues(formData);
 
     if (!Number.isFinite(monthlyRate) || monthlyRate < 0) {
       errors.push(["monthlyRate", "Informe uma taxa mensal maior ou igual a zero."]);
@@ -51,7 +68,8 @@ export function validateFormData(formData) {
   if (mode === "historical") {
     const startMonth = String(formData.get("startMonth"));
     const endMonth = String(formData.get("endMonth"));
-    const comparisonManualRate = readNumber(formData, "comparisonManualRate");
+    const { manualMonthlyRatePercent: comparisonManualRate } =
+      readHistoricalComparisonValues(formData);
 
     if (!startMonth) {
       errors.push(["startMonth", "Informe o mês inicial."]);
@@ -70,6 +88,23 @@ export function validateFormData(formData) {
         "comparisonManualRate",
         "Informe uma taxa manual de comparação maior ou igual a zero.",
       ]);
+    }
+  }
+
+  if (hasCustomContributions) {
+    if (!contributionPlan) {
+      errors.push([
+        "customContributionPlan",
+        mode === "historical"
+          ? "Informe os aportes personalizados no formato AAAA-MM:valor."
+          : "Informe os aportes personalizados no formato mes:valor.",
+      ]);
+    } else {
+      try {
+        parseContributionPlan(contributionPlan, mode);
+      } catch (error) {
+        errors.push(["customContributionPlan", error.message]);
+      }
     }
   }
 

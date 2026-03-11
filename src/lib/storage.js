@@ -1,9 +1,43 @@
 const STORAGE_KEY = "investment-return-calculator:form-state";
 
+function isInputElement(element) {
+  return typeof HTMLInputElement !== "undefined" && element instanceof HTMLInputElement;
+}
+
+function isSelectElement(element) {
+  return typeof HTMLSelectElement !== "undefined" && element instanceof HTMLSelectElement;
+}
+
 function isStorableField(element) {
-  return (
-    element instanceof HTMLInputElement || element instanceof HTMLSelectElement
-  ) && Boolean(element.name);
+  return (isInputElement(element) || isSelectElement(element)) && Boolean(element.name);
+}
+
+function readFieldState(element) {
+  if (isInputElement(element) && element.type === "checkbox") {
+    return {
+      checked: element.checked,
+      value: element.value,
+    };
+  }
+
+  return element.value;
+}
+
+function applyFieldState(field, state) {
+  if (isInputElement(field) && field.type === "checkbox") {
+    if (typeof state === "object" && state !== null && "checked" in state) {
+      field.checked = Boolean(state.checked);
+      if ("value" in state) {
+        field.value = String(state.value);
+      }
+      return;
+    }
+
+    field.checked = state === true || state === "true" || state === "on";
+    return;
+  }
+
+  field.value = String(state);
 }
 
 export function saveFormState(form) {
@@ -15,7 +49,7 @@ export function saveFormState(form) {
         return;
       }
 
-      snapshot[element.name] = element.value;
+      snapshot[element.name] = readFieldState(element);
     });
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
@@ -46,8 +80,13 @@ export function applyStoredFormState(form, state) {
   Object.entries(state).forEach(([fieldName, value]) => {
     const field = form.elements.namedItem(fieldName);
 
-    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
-      field.value = String(value);
+    if (isInputElement(field) || isSelectElement(field)) {
+      applyFieldState(field, value);
     }
   });
 }
+
+export const __storageTestUtils = {
+  applyFieldState,
+  readFieldState,
+};

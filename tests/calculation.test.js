@@ -77,3 +77,22 @@ test("manual projection can act as a comparison baseline for the same month coun
   assert.equal(result.totalInvested, 5400);
   assert.equal(result.finalAmount, 5481.92);
 });
+
+test("manual projection supports custom contributions for specific months", () => {
+  const result = calculateManualProjection({
+    initialAmount: 1000,
+    monthlyContribution: 200,
+    monthlyRatePercent: 1,
+    months: 3,
+    customContributionMap: new Map([
+      [2, 500],
+      [3, 0],
+    ]),
+  });
+
+  assert.equal(result.totalInvested, 1700);
+  assert.equal(result.schedule[0].contribution, 200);
+  assert.equal(result.schedule[1].contribution, 500);
+  assert.equal(result.schedule[2].contribution, 0);
+  assert.equal(result.finalAmount, 1739.32);
+});

@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { validateFormData, validateMonthRange } from "../src/lib/validation.js";
+import {
+  readHistoricalComparisonValues,
+  readManualValues,
+  validateFormData,
+  validateMonthRange,
+} from "../src/lib/validation.js";
 
 function buildFormData(entries) {
   const formData = new FormData();
@@ -50,4 +55,30 @@ test("validateMonthRange throws when the initial month is after the final month"
     () => validateMonthRange("2026-04", "2026-03"),
     /O mês inicial não pode ser maior que o mês final\./,
   );
+});
+
+test("readManualValues supports decimal rates with comma separators", () => {
+  const values = readManualValues(
+    buildFormData({
+      monthlyRate: "1,5",
+      months: 12,
+    }),
+  );
+
+  assert.deepEqual(values, {
+    monthlyRatePercent: 1.5,
+    months: 12,
+  });
+});
+
+test("readHistoricalComparisonValues supports decimal rates with comma separators", () => {
+  const values = readHistoricalComparisonValues(
+    buildFormData({
+      comparisonManualRate: "0,85",
+    }),
+  );
+
+  assert.deepEqual(values, {
+    manualMonthlyRatePercent: 0.85,
+  });
 });
