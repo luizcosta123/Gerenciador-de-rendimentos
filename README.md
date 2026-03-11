@@ -68,6 +68,28 @@ Esse workflow roda automaticamente em `push` e `pull_request` para a branch `mai
 
 No GitHub Actions, o runner padrão consegue executar o comando de teste sem o parâmetro `--test-isolation=none`.
 
+## Versionamento
+
+O projeto segue `Semantic Versioning` no formato `MAJOR.MINOR.PATCH`.
+
+Regras adotadas:
+
+- `MAJOR`: mudanças incompatíveis ou quebra relevante de contrato
+- `MINOR`: novas funcionalidades compatíveis com a versão atual
+- `PATCH`: correções e ajustes sem mudança funcional relevante
+
+Enquanto o projeto ainda estiver amadurecendo, a linha `0.x.y` será usada.
+O primeiro marco base planejado é `v0.1.0`.
+
+O histórico de mudanças fica em [`CHANGELOG.md`](/C:/Projects/Gerenciador%20de%20rendimentos/CHANGELOG.md).
+
+Exemplo para criar uma tag de versão:
+
+```powershell
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
 ## Estrutura atual
 
 ```text
