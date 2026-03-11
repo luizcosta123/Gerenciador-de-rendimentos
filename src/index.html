@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gerenciador de rendimentos</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Planejamento financeiro</p>
+        <h1>Simule rendimentos atuais ou descubra quanto um valor teria rendido no passado.</h1>
+        <p class="intro">
+          Use projeção manual para cenários futuros ou simulação histórica para
+          comparar Selic e poupança em períodos já fechados.
+        </p>
+      </section>
+
+      <section class="calculator-layout">
+        <form id="calculator-form" class="panel form-panel">
+          <div class="field">
+            <label for="calculationMode">Modo de cálculo</label>
+            <select id="calculationMode" name="calculationMode">
+              <option value="manual">Projeção manual</option>
+              <option value="historical">Simulação histórica</option>
+            </select>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>Valor inicial</span>
+              <input
+                id="initialAmount"
+                name="initialAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value="1000"
+                required
+              />
+              <small class="field-error" data-error-for="initialAmount"></small>
+            </label>
+
+            <label class="field">
+              <span>Aporte mensal</span>
+              <input
+                id="monthlyContribution"
+                name="monthlyContribution"
+                type="number"
+                min="0"
+                step="0.01"
+                value="500"
+                required
+              />
+              <small class="field-error" data-error-for="monthlyContribution"></small>
+            </label>
+          </div>
+
+          <div data-fields="manual">
+            <div class="grid-two">
+              <label class="field">
+                <span>Taxa mensal (%)</span>
+                <input
+                  id="monthlyRate"
+                  name="monthlyRate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value="1"
+                />
+                <small class="field-error" data-error-for="monthlyRate"></small>
+              </label>
+
+              <label class="field">
+                <span>Período (meses)</span>
+                <input
+                  id="months"
+                  name="months"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="24"
+                />
+                <small class="field-error" data-error-for="months"></small>
+              </label>
+            </div>
+          </div>
+
+          <div data-fields="historical" hidden>
+            <div class="field">
+              <label for="historicalBenchmark">Base histórica</label>
+              <select id="historicalBenchmark" name="historicalBenchmark">
+                <option value="selic">Selic histórica</option>
+                <option value="savings">Poupança histórica</option>
+              </select>
+            </div>
+
+            <div class="grid-two">
+              <label class="field">
+                <span>Mês inicial</span>
+                <input id="startMonth" name="startMonth" type="month" />
+                <small class="field-error" data-error-for="startMonth"></small>
+              </label>
+
+              <label class="field">
+                <span>Mês final</span>
+                <input id="endMonth" name="endMonth" type="month" />
+                <small class="field-error" data-error-for="endMonth"></small>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Taxa manual para comparação (%)</span>
+              <input
+                id="comparisonManualRate"
+                name="comparisonManualRate"
+                type="number"
+                min="0"
+                step="0.01"
+                value="1"
+              />
+              <small class="field-error" data-error-for="comparisonManualRate"></small>
+            </label>
+
+            <p class="helper-text">
+              A simulação histórica usa séries oficiais do Banco Central por
+              mês. A regra da poupança é estimada com TR mais a parcela definida
+              pela Selic.
+            </p>
+          </div>
+
+          <button type="submit" class="primary-action">Calcular</button>
+          <p id="loadingState" class="loading" hidden>Consultando dados oficiais...</p>
+          <p id="statusMessage" class="status" data-tone="neutral"></p>
+        </form>
+
+        <div class="results-stack">
+          <section id="comparisonSection" class="panel comparison-panel" hidden>
+            <div class="projection-head">
+              <h2>Comparação lado a lado</h2>
+              <p>Ranking entre taxa manual, Selic histórica e poupança histórica.</p>
+            </div>
+            <div id="comparisonCards" class="comparison-grid"></div>
+          </section>
+
+          <section class="panel results-panel" aria-live="polite">
+            <h2>Resumo</h2>
+            <dl class="results">
+              <div>
+                <dt>Total investido</dt>
+                <dd id="totalInvested">R$ 0,00</dd>
+              </div>
+              <div>
+                <dt>Juros ganhos</dt>
+                <dd id="interestEarned">R$ 0,00</dd>
+              </div>
+              <div>
+                <dt>Montante final</dt>
+                <dd id="finalAmount">R$ 0,00</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="panel projection-panel">
+            <div class="projection-head">
+              <h2>Projeção mês a mês</h2>
+              <div class="projection-actions">
+                <p>Taxa aplicada, juros do período, aporte e saldo acumulado.</p>
+                <button id="exportCsvButton" type="button" class="secondary-action">
+                  Exportar CSV
+                </button>
+              </div>
+            </div>
+
+            <div id="projectionSummary" class="projection-summary">
+              <article class="summary-card">
+                <p>Melhor mês</p>
+                <strong id="bestMonthLabel">-</strong>
+                <span id="bestMonthValue">R$ 0,00</span>
+              </article>
+              <article class="summary-card">
+                <p>Pior mês</p>
+                <strong id="worstMonthLabel">-</strong>
+                <span id="worstMonthValue">R$ 0,00</span>
+              </article>
+              <article class="summary-card">
+                <p>Juros acumulados</p>
+                <strong id="totalInterestLabel">Período</strong>
+                <span id="totalInterestValue">R$ 0,00</span>
+              </article>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Mês</th>
+                    <th>Base</th>
+                    <th>Taxa</th>
+                    <th>Juros</th>
+                    <th>Aporte</th>
+                    <th>Saldo final</th>
+                  </tr>
+                </thead>
+                <tbody id="projectionRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
