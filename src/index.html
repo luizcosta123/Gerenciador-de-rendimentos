@@ -30,31 +30,140 @@
           <div class="grid-two">
             <label class="field">
               <span>Valor inicial</span>
-              <input
-                id="initialAmount"
-                name="initialAmount"
-                type="number"
-                min="0"
-                step="0.01"
-                value="1000"
-                required
-              />
+              <div class="step-input step-input-inline">
+                <input
+                  id="initialAmount"
+                  name="initialAmount"
+                  type="text"
+                  inputmode="decimal"
+                  data-decimal-input
+                  value="1000"
+                  required
+                />
+                <div class="step-actions step-actions-inline" aria-label="Ajustar valor inicial">
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="initialAmount"
+                    data-step-delta="-1000"
+                    aria-label="Diminuir valor inicial em 1000"
+                  >
+                    1k
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="initialAmount"
+                    data-step-delta="-100"
+                    aria-label="Diminuir valor inicial em 100"
+                  >
+                    100
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="initialAmount"
+                    data-step-delta="100"
+                    aria-label="Aumentar valor inicial em 100"
+                  >
+                    100
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="initialAmount"
+                    data-step-delta="1000"
+                    aria-label="Aumentar valor inicial em 1000"
+                  >
+                    1k
+                  </button>
+                </div>
+              </div>
               <small class="field-error" data-error-for="initialAmount"></small>
             </label>
 
             <label class="field">
               <span>Aporte mensal</span>
-              <input
-                id="monthlyContribution"
-                name="monthlyContribution"
-                type="number"
-                min="0"
-                step="0.01"
-                value="500"
-                required
-              />
+              <div class="step-input step-input-inline">
+                <input
+                  id="monthlyContribution"
+                  name="monthlyContribution"
+                  type="text"
+                  inputmode="decimal"
+                  data-decimal-input
+                  value="500"
+                  required
+                />
+                <div class="step-actions step-actions-inline" aria-label="Ajustar aporte mensal">
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="monthlyContribution"
+                    data-step-delta="-1000"
+                    aria-label="Diminuir aporte mensal em 1000"
+                  >
+                    1k
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="monthlyContribution"
+                    data-step-delta="-100"
+                    aria-label="Diminuir aporte mensal em 100"
+                  >
+                    100
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="monthlyContribution"
+                    data-step-delta="100"
+                    aria-label="Aumentar aporte mensal em 100"
+                  >
+                    100
+                  </button>
+                  <button
+                    type="button"
+                    class="step-button"
+                    data-step-target="monthlyContribution"
+                    data-step-delta="1000"
+                    aria-label="Aumentar aporte mensal em 1000"
+                  >
+                    1k
+                  </button>
+                </div>
+              </div>
               <small class="field-error" data-error-for="monthlyContribution"></small>
             </label>
+          </div>
+
+          <label class="field field-checkbox">
+            <span>
+              <input id="useCustomContributions" name="useCustomContributions" type="checkbox" />
+              Usar aportes personalizados por mês
+            </span>
+          </label>
+
+          <div data-fields="custom-contributions" hidden>
+            <label class="field">
+              <span>Aportes personalizados</span>
+              <input id="customContributionPlan" name="customContributionPlan" type="hidden" />
+              <div class="contribution-builder">
+                <div id="customContributionRows" class="contribution-rows"></div>
+                <button
+                  id="addContributionRowButton"
+                  type="button"
+                  class="secondary-action secondary-action-inline"
+                >
+                  Adicionar aporte
+                </button>
+              </div>
+              <small class="field-error" data-error-for="customContributionPlan"></small>
+            </label>
+            <p class="helper-text">
+              O aporte mensal padrão continua valendo para todos os meses. Use este campo
+              apenas para substituir meses específicos.
+            </p>
           </div>
 
           <div data-fields="manual">
@@ -64,9 +173,9 @@
                 <input
                   id="monthlyRate"
                   name="monthlyRate"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
+                  inputmode="decimal"
+                  data-decimal-input
                   value="1"
                 />
                 <small class="field-error" data-error-for="monthlyRate"></small>
@@ -115,9 +224,9 @@
               <input
                 id="comparisonManualRate"
                 name="comparisonManualRate"
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputmode="decimal"
+                data-decimal-input
                 value="1"
               />
               <small class="field-error" data-error-for="comparisonManualRate"></small>
@@ -172,6 +281,23 @@
                 </button>
               </div>
             </div>
+
+            <section class="chart-panel" aria-label="Evolução do saldo acumulado">
+              <div class="chart-head">
+                <div>
+                  <p class="chart-label">Evolução acumulada</p>
+                  <strong id="chartCurrentValue">R$ 0,00</strong>
+                </div>
+                <span id="chartRangeLabel" class="chart-range">Sem dados</span>
+              </div>
+              <svg
+                id="projectionChart"
+                class="projection-chart"
+                viewBox="0 0 720 240"
+                role="img"
+                aria-label="Gráfico da evolução do saldo acumulado"
+              ></svg>
+            </section>
 
             <div id="projectionSummary" class="projection-summary">
               <article class="summary-card">
