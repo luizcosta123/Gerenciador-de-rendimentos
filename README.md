@@ -14,6 +14,7 @@ Nesta versão, a aplicação:
 - calcula total investido, juros ganhos e montante final
 - exibe a evolução mês a mês
 - permite exportar a tabela detalhada em CSV
+- salva os últimos dados preenchidos no navegador
 
 ## Como rodar
 
@@ -50,7 +51,7 @@ Os testes atuais validam a lógica principal de cálculo manual, o motor genéri
 Execute na raiz do projeto:
 
 ```powershell
-node --test --test-isolation=none tests\calculation.test.js
+node --test --test-isolation=none tests\calculation.test.js tests\validation.test.js
 ```
 
 O parâmetro `--test-isolation=none` é usado porque, neste ambiente, o isolamento padrão do runner do Node tenta abrir subprocessos e pode falhar.
@@ -63,7 +64,7 @@ Esse workflow roda automaticamente em `push` e `pull_request` para a branch `mai
 
 - checkout do repositório
 - configuração do Node.js
-- execução de `node --test tests/calculation.test.js`
+- execução de `node --test tests/calculation.test.js tests/validation.test.js`
 
 No GitHub Actions, o runner padrão consegue executar o comando de teste sem o parâmetro `--test-isolation=none`.
 
@@ -76,8 +77,15 @@ src/
   app.js
   calculation.js
   historical-data.js
+  lib/
+    formatters.js
+    storage.js
+    validation.js
+  ui/
+    view.js
 tests/
   calculation.test.js
+  validation.test.js
 ```
 
 ## Modos de cálculo
